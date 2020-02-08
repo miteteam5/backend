@@ -104,7 +104,7 @@ def get_term_numbers():
 def get_Attendance(academicYear,usn,termNumber,subject):
     attendance1=st1db.get_attendence(academicYear,usn,termNumber,subject)
     return jsonify({"attendance_d":attendance1})
-    
+
 
 
 @app.route("/attendancedetails/<string:usn>/<string:academicYear>/<termNumber>")
