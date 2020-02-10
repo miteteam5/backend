@@ -25,16 +25,16 @@ jwt = JWTManager(app)
 
 
 class UserObject:
-    def __init__(self, username, roles,emlpoyeeGivenId,usn):
+    def __init__(self, username, roles,employeeGivenId,usn):
         self.username = username
         self.roles = roles
-        self.emlpoyeeGivenId = emlpoyeeGivenId
+        self.employeeGivenId = employeeGivenId
         self.usn = usn
  
 
 @jwt.user_claims_loader
 def add_claims_to_access_token(user):
-    return {'roles': user.roles,"emlpoyeeGivenId":user.emlpoyeeGivenId,"usn":user.usn}
+    return {'roles': user.roles,"employeeGivenId":user.employeeGivenId,"usn":user.usn}
 
 @jwt.user_identity_loader
 def user_identity_lookup(user):
@@ -45,7 +45,7 @@ def user_identity_lookup(user):
 # it to the caller however you choose.
 @app.route('/login', methods=['POST'])
 def login():
-    emlpoyeeGivenId = ''
+    employeeGivenId = ''
     usn = ''
     if not request.is_json:
         return jsonify({"msg": "Missing JSON in request"}), 400
@@ -57,10 +57,10 @@ def login():
         return jsonify({"msg": "Bad username or password"}), 401
     roles = [ x['roleName'] for x in user['roles']]
     if 'employeeGivenId' in user:
-        emlpoyeeGivenId = user["employeeGivenId"]
+        employeeGivenId = user["employeeGivenId"]
     if 'usn' in user:
         usn = user["usn"]
-    user = UserObject(username=user["email"], roles=roles,emlpoyeeGivenId = emlpoyeeGivenId,usn = usn)
+    user = UserObject(username=user["email"], roles=roles,employeeGivenId = employeeGivenId,usn = usn)
     # Identity can be any data that is json serializable
     access_token = create_access_token(identity=user,expires_delta=False)
     return jsonify(access_token=access_token), 200
@@ -82,7 +82,7 @@ def protected():
     ret = {
             'user': get_jwt_identity(),  
             'roles': get_jwt_claims()['roles'] ,
-            'employeeGivenId':get_jwt_claims()['emlpoyeeGivenId'],
+            'employeeGivenId':get_jwt_claims()['employeeGivenId'],
             'usn':get_jwt_claims()['usn']
           }
         
@@ -99,25 +99,38 @@ def get_term_numbers():
     terms = st1db.get_term_numbers()
     return jsonify({'term_numbers':terms})
 
-@app.route("/attendance/<academicYear>/<usn>/<termNumber>/<subject>")
-# view all the documents present in db
+@app.route('/usn/<email>')
+def getUsn(email):
+    usn = st1db.get_student_usn(email)
+    return jsonify({"usn":usn})
+
+@app.route('/attendance/<academicYear>/<usn>/<termNumber>/<subject>')
 def get_Attendance(academicYear,usn,termNumber,subject):
     attendance1=st1db.get_attendence(academicYear,usn,termNumber,subject)
     return jsonify({"attendance_d":attendance1})
 
-
-
-@app.route("/attendancedetails/<string:usn>/<string:academicYear>/<termNumber>")
+@app.route('/attendancedetails/<string:usn>/<string:academicYear>/<termNumber>')
 # view all the documents present in db
 def get_attendance_details(usn, academicYear, termNumber):
     termNumber = list(termNumber.split(','))
     attendance_percent = st1db.get_details(usn, academicYear, termNumber)
     return jsonify({"attendance_percent": attendance_percent})
 
-@app.route("/attendancedetailsbyfac/<empid>/<sem>/<courseCode>")
-def get_attendance_byFaculty_sub(empid,sem,courseCode):
-    attendance_byFac_sub=st1db.getAttendanceDetails_bySubject_Faculty(empid,sem,courseCode)
-    return jsonify({"attendanceD":attendance_byFac_sub})
+
+@app.route('/depts')
+def getAllDept():
+    depts = st1db.get_all_depts()
+    return jsonify({"depts":depts})
+
+@app.route('/emps/<dept>')
+def getEmpByDept(dept):
+    emps = st1db.get_faculties_by_dept(dept)
+    return jsonify({"faculty":emps})
+
+@app.route('/get-selected-fac-details/<empid>/<term>')
+def get_fac_details(empid , term):
+    res = st1db.get_fac_wise_details(empid,term)
+    return jsonify({"fac":res})
 
 @app.route('/get-placement/<term>/<usn>')
 def getOffers(term,usn):

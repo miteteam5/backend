@@ -47,7 +47,7 @@ def get_attendence(year,usn,sem,subject):
     return res
 #returns the usn of the requested email if present
 def get_student_usn(email):
-    collection = db.dhi_user
+    collection = mydb['dhi_user']
     usn = collection.aggregate([
         {"$match":{"email":email}},
         {"$project":{"_id":0,"usn":1}}
@@ -139,19 +139,21 @@ def get_faculties_by_dept(dept):
     return res
 #get_faculties_by_dept("CSE")
 
-def getAttendanceDetails_bySubject_Faculty(empID,sem,courseCode):
-    collection=mydb['dhi_student_attendance']
-    attendance_by_fac_sub = collection.aggregate([
-        {"$match":{"faculties.employeeGivenId":empID,"departments.termName":sem,"courseCode":courseCode}},
-        {"$unwind":"$students"},
-        {"$group":{"_id":"courseCode","totalPercentage":{"$sum":"$students.percentage"},"peopleCount":{"$sum":1}}}
-        ])
-    res=[]
-    for x in attendance_by_fac_sub:
-        if x not in res:
-            res.append(x)
-    return res
     
+def get_fac_wise_details(empid , term):
+    collection = mydb.dhi_student_attendance
+    res = collection.aggregate([
+          {"$match":{"faculties.employeeGivenId":empid,"departments.termNumber":term}},
+          {"$unwind":"$students"},
+          {"$unwind":"$courseName"},
+
+          {"$group":{"_id":"$courseName","totalPercentage":{"$avg":"$students.percentage"},"peopleCount":{"$sum":1}}},
+          {"$project" : {"courseid":"$_id","totalPercentage":1,"peopleCount":1,"_id":0}}
+
+          ])
+        
+    return [r for r in res]
+
 
 def get_ia_details(usn,courseCode,section,termNumber,deptId,year):
     ia_percent = 0
