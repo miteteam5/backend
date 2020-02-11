@@ -71,39 +71,7 @@ def get_emp_id(email):
     #print(res)
     return res
 
-def get_emp_sub_placement(empID,sub,sem):
-    collection =  mydb['dhi_student_attendance']
-    students = collection.aggregate([
-        {"$match":{"faculties.employeeGivenId" : empID,"departments.termName":sem,"courseName":sub}},
-        {"$unwind":"$students"},
-        {"$group":{"_id":"$courseName","studentUSNs":{"$addToSet":"$students.usn"}}},
-    ])
-    res = []
-    for x in students:
-        res.append(x)
-    totalStudents = 0
-    filtered = []
-    for x in res:
-        for usn in x["studentUSNs"]:
-            status = get_placed_details(usn)
-            if status!=0:
-                filtered.append(status)
-            totalStudents = len(x["studentUSNs"])
-    # print("filtered",filtered)
-    # print(f"Placed Students :{len(filtered)},No.of Offers : {sum(filtered)}")
-    return (totalStudents,len(filtered),sum(filtered))
 
-def get_placed_details(usn):
-    collection = mydb['pms_placement_student_details']
-    people = collection.aggregate([
-    {"$match":{"studentList.regNo":usn}},
-    {"$unwind":"$studentList"},
-    {"$match":{"studentList.regNo":usn}},
-    ])
-    res = []
-    for x in people:
-        res.append(x)
-    return len(res)
 
 #returns the list of all department
 def get_all_depts():
@@ -140,9 +108,9 @@ def get_faculties_by_dept(dept):
 #get_faculties_by_dept("CSE")
 
     
-def get_fac_wise_details(empid , term):
-    collection = mydb.dhi_student_attendance
-    res = collection.aggregate([
+def get_fac_wise_details(empid ,term):
+    collection = mydb['dhi_student_attendance']
+    attendance = collection.aggregate([
           {"$match":{"faculties.employeeGivenId":empid,"departments.termNumber":term}},
           {"$unwind":"$students"},
           {"$unwind":"$courseName"},
@@ -151,9 +119,84 @@ def get_fac_wise_details(empid , term):
           {"$project" : {"courseid":"$_id","totalPercentage":1,"peopleCount":1,"_id":0}}
 
           ])
-        
-    return [r for r in res]
+    att = [r for r in attendance]
 
+    res = []
+    for mark in att:
+        place = get_emp_sub_placement(empid,mark['courseid'],term)
+        if mark['totalPercentage'] != 0:
+            mark['totalPercentage'] = mark['totalPercentage']
+        else:
+            mark['totalPercentage'] = 0
+        
+        if place[0] != 0:
+           mark['placePercentage'] = 100 * place[1] / place[0]
+        else:
+            mark['placePercentage'] = 0
+        res.append(mark)
+    return res
+    
+        
+def get_single_course(empid , term):
+    collection = mydb['dhi_student_attendance']
+    res = collection.aggregate([
+          {"$match":{"faculties.employeeGivenId":empid,"departments.termNumber":term}},
+          {"$unwind":"$students"},
+          {"$unwind":"$courseName"},
+
+          {"$group":{"_id":"$courseName"}},
+          {"$project" : {"courseid":"$_id" , "_id":0}}
+
+          ])
+    li = [r for r in res]
+
+    return li[0]  
+    
+def get_no_classes(empid,sub,term,year): 
+    collection = mydb['dhi_student_attendance']
+    res = collection.aggregate([
+    {"$match":{"faculties.employeeGivenId":empid,"courseName":sub,"departments.termNumber":term,"academicYear" : year}},
+
+    {"$unwind":"$students"},
+    {"$group":{"_id":"$courseName","classes":{"$max":"$students.totalNumberOfClasses"}}},
+    {"$project":{"subject":"$_id","_id":0,"classes":1}}
+    ])
+    li = [r for r in res]
+    return li
+
+def get_emp_sub_placement(empID,sub,sem):
+    collection =  mydb['dhi_student_attendance']
+    students = collection.aggregate([
+        {"$match":{"faculties.employeeGivenId" : empID,"departments.termNumber":sem,"courseName":sub}},
+        {"$unwind":"$students"},
+        {"$group":{"_id":"$courseName","studentUSNs":{"$addToSet":"$students.usn"}}},
+    ])
+    res = []
+    for x in students:
+        res.append(x)
+    totalStudents = 0
+    filtered = []
+    for x in res:
+        for usn in x["studentUSNs"]:
+            status = get_placed_details(usn)
+            if status!=0:
+                filtered.append(status)
+            totalStudents = len(x["studentUSNs"])
+    # print("filtered",filtered)
+    # print(f"Placed Students :{len(filtered)},No.of Offers : {sum(filtered)}")
+    return (totalStudents,len(filtered),sum(filtered))
+
+def get_placed_details(usn):
+    collection = mydb['pms_placement_student_details']
+    people = collection.aggregate([
+    {"$match":{"studentList.regNo":usn}},
+    {"$unwind":"$studentList"},
+    {"$match":{"studentList.regNo":usn}},
+    ])
+    res = []
+    for x in people:
+        res.append(x)
+    return len(res)
 
 def get_ia_details(usn,courseCode,section,termNumber,deptId,year):
     ia_percent = 0

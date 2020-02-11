@@ -92,7 +92,7 @@ def protected():
 @app.route('/academicyear')
 def getacademicYear():
     year = st1db.getacademicYear()
-    return jsonify({'acdemicYear':year})
+    return jsonify({'academicYear':year})
 
 @app.route('/termNumber')
 def get_term_numbers():
@@ -136,6 +136,16 @@ def get_fac_details(empid , term):
 def getOffers(term,usn):
     offers = st1db.get_student_placment_offers(term,usn)
     return jsonify({"offers":offers})
+
+@app.route('/get-single-course/<emp>/<term>')
+def get_single_course(emp , term):
+    course = st1db.get_single_course(emp , term)
+    return jsonify({"course" : course})
+
+@app.route('/get_no_course/<empid>/<sub>/<term>/<year>')
+def get_no_of_course(empid,sub,term,year):
+    course = st1db.get_no_classes(empid,sub,term,year)
+    return jsonify({"course" : course})
 
 @app.route('/emp/placement/<empid>/<sem>/<sub>')
 def getSubPlacement(empid,sem,sub):
